@@ -1,12 +1,13 @@
-// Import express and ejs
-var express = require ('express')
-var ejs = require('ejs')
-const path = require('path')
-var mysql = require('mysql2');
+require('dotenv').config();
 
-// Create the express application object
-const app = express()
-const port = 8000
+const express = require('express');
+const ejs = require('ejs');
+const path = require('path');
+const mysql = require('mysql2');
+
+// Create the Express app
+const app = express();
+const port = 8000;
 
 // ----------------------
 // MySQL Connection Pool
@@ -21,32 +22,34 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-// make the pool available to all routes
+// Make DB available everywhere
 global.db = db;
 
-// Tell Express that we want to use EJS as the templating engine
-app.set('view engine', 'ejs')
+// ----------------------
+// Express configuration
+// ----------------------
+app.set('view engine', 'ejs');
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Set up the body parser 
-app.use(express.urlencoded({ extended: true }))
+// Shop name used by templates
+app.locals.shopData = { shopName: "Bertie's Books" };
 
-// Set up public folder (for css and static js)
-app.use(express.static(path.join(__dirname, 'public')))
+// ----------------------
+// Route Handlers
+// ----------------------
+const mainRoutes = require('./routes/main');
+app.use('/', mainRoutes);
 
-// Define our application-specific data
-app.locals.shopData = {shopName: "Bertie's Books"}
+const usersRoutes = require('./routes/users');
+app.use('/users', usersRoutes);
 
-// Load the route handlers
-const mainRoutes = require("./routes/main")
-app.use('/', mainRoutes)
+const booksRoutes = require('./routes/books');
+app.use('/books', booksRoutes);
 
-// Load the route handlers for /users
-const usersRoutes = require('./routes/users')
-app.use('/users', usersRoutes)
-
-// Load the route handlers for /books
-const booksRoutes = require('./routes/books')
-app.use('/books', booksRoutes)
-
-// Start the web app listening
-app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+// ----------------------
+// Start Server
+// ----------------------
+app.listen(port, () => {
+  console.log(`Bertie's Books app running on port ${port}!`);
+});

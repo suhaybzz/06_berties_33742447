@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Login Audit Log</title>
+    <link rel="stylesheet" type="text/css" href="/main.css" />
+  </head>
+  <body>
+    <h1>Login Audit Log</h1>
+
+    <table>
+      <tr>
+        <th>Username</th>
+        <th>Success</th>
+        <th>Time</th>
+        <th>Message</th>
+      </tr>
+      <% auditRows.forEach(function (row) { %>
+        <tr>
+          <td><%= row.username %></td>
+          <td><%= row.success ? 'Yes' : 'No' %></td>
+          <td><%= row.time %></td>
+          <td><%= row.message %></td>
+        </tr>
+      <% }); %>
+    </table>
+
+    <p><a href="/">Back to home</a></p>
+  </body>
+</html>

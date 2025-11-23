@@ -20,3 +20,11 @@ GRANT ALL PRIVILEGES ON berties_books.* TO 'berties_books_app'@'localhost';
 
 # Apply the privilege changes
 FLUSH PRIVILEGES;
+CREATE TABLE IF NOT EXISTS audit (
+    id INT AUTO_INCREMENT,
+    username VARCHAR(50),
+    success BOOLEAN,
+    time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    message VARCHAR(255),
+    PRIMARY KEY (id)
+);

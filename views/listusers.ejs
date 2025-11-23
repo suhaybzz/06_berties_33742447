@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Registered Users</title>
+    <link rel="stylesheet" type="text/css" href="/main.css" />
+  </head>
+
+  <body>
+    <h1>Registered Users</h1>
+
+    <ul>
+      <% users.forEach(function (user) { %>
+        <li>
+          <strong><%= user.username %></strong> –
+          <%= user.first %> <%= user.last %> (<%= user.email %>)
+        </li>
+      <% }); %>
+    </ul>
+
+    <p><a href="/">Back to home</a></p>
+  </body>
+</html>
