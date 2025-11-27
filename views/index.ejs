@@ -8,17 +8,42 @@
   <body>
     <h1>Welcome to <%= shopData.shopName %></h1>
 
-    <p><a href="/about">About <%= shopData.shopName %></a></p>
+    <% if (currentUser) { %>
+      <p>
+        Logged in as <strong><%= currentUser.username %></strong>.
+        <a href="/users/logout">Logout</a>
+      </p>
+    <% } else { %>
+      <form method="POST" action="/users/loggedin">
+        <fieldset>
+          <legend>Login</legend>
 
-    <!-- Existing links -->
+          <p>
+            <label for="username">Username:</label>
+            <input id="username" name="username" type="text" required />
+          </p>
+
+          <p>
+            <label for="password">Password:</label>
+            <input id="password" name="password" type="password" required />
+          </p>
+
+          <p>
+            <input type="submit" value="Login" />
+          </p>
+        </fieldset>
+      </form>
+    <% } %>
+
+    <hr />
+
+    <p><a href="/about">About <%= shopData.shopName %></a></p>
     <p><a href="/books/search">Search for books</a></p>
     <p><a href="/users/register">Register with us</a></p>
-//
-
     <p><a href="/books/list">View all books</a></p>
     <p><a href="/books/addbook">Add a new book</a></p>
-    <p><a href="books/bargains">Bargain Books</a></p>
-
-
+    <p><a href="/books/bargains">Bargain Books</a></p>
+    <p><a href="/users/list">View users</a></p>
+    <p><a href="/users/audit">View login audit log</a></p>
   </body>
 </html>
