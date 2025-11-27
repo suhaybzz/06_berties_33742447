@@ -4,34 +4,71 @@
     <title>Register for <%= shopData.shopName %></title>
     <link rel="stylesheet" type="text/css" href="/main.css" />
   </head>
-
   <body>
     <h1>Register for <%= shopData.shopName %></h1>
 
-    <form method="POST" action="registered">
+    <% if (errors && errors.length > 0) { %>
+      <div class="error-box">
+        <h2>There were problems with your submission:</h2>
+        <ul>
+          <% errors.forEach(function (err) { %>
+            <li><%= err.msg %></li>
+          <% }); %>
+        </ul>
+      </div>
+    <% } %>
+
+    <form method="POST" action="/users/registered">
       <p>
-        Username:
-        <input id="username" type="text" name="username" required />
+        <label for="username">Username:</label>
+        <input
+          id="username"
+          type="text"
+          name="username"
+          value="<%= formData.username || '' %>"
+          required
+        />
       </p>
 
       <p>
-        First name:
-        <input id="first" type="text" name="first" required />
+        <label for="first">First name:</label>
+        <input
+          id="first"
+          type="text"
+          name="first"
+          value="<%= formData.first || '' %>"
+        />
       </p>
 
       <p>
-        Last name:
-        <input id="last" type="text" name="last" required />
+        <label for="last">Last name:</label>
+        <input
+          id="last"
+          type="text"
+          name="last"
+          value="<%= formData.last || '' %>"
+        />
       </p>
 
       <p>
-        Email:
-        <input id="email" type="email" name="email" required />
+        <label for="email">Email:</label>
+        <input
+          id="email"
+          type="email"
+          name="email"
+          value="<%= formData.email || '' %>"
+          required
+        />
       </p>
 
       <p>
-        Password:
-        <input id="password" type="password" name="password" required />
+        <label for="password">Password:</label>
+        <input
+          id="password"
+          type="password"
+          name="password"
+          required
+        />
       </p>
 
       <p>

@@ -1,5 +1,13 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
+
+// simple auth middleware reused here
+function ensureLoggedIn(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect('/users/login');
+  }
+  next();
+}
 
 // Books home page
 router.get('/', function (req, res, next) {
@@ -8,7 +16,7 @@ router.get('/', function (req, res, next) {
 
 // List all books (HTML)
 router.get('/list', function (req, res, next) {
-  let sqlquery = 'SELECT * FROM books';
+  const sqlquery = 'SELECT * FROM books';
 
   db.query(sqlquery, (err, result) => {
     if (err) return next(err);
@@ -16,15 +24,15 @@ router.get('/list', function (req, res, next) {
   });
 });
 
-// Show Add Book form
-router.get('/addbook', function (req, res, next) {
+// Show Add Book form  (PROTECTED)
+router.get('/addbook', ensureLoggedIn, function (req, res, next) {
   res.render('addbook.ejs');
 });
 
-// Handle Add Book submission
-router.post('/bookadded', function (req, res, next) {
-  let sqlquery = 'INSERT INTO books (name, price) VALUES (?, ?)';
-  let newrecord = [req.body.name, req.body.price];
+// Handle Add Book submission (PROTECTED)
+router.post('/bookadded', ensureLoggedIn, function (req, res, next) {
+  const sqlquery = 'INSERT INTO books (name, price) VALUES (?, ?)';
+  const newrecord = [req.body.name, req.body.price];
 
   db.query(sqlquery, newrecord, (err, result) => {
     if (err) return next(err);
@@ -34,14 +42,13 @@ router.post('/bookadded', function (req, res, next) {
   });
 });
 
-// Bargain books page (price < 20)
-router.get('/bargains', function (req, res, next) {
-  let sqlquery = 'SELECT * FROM books WHERE price < 20';
+// Bargains page (optionally protected – you can remove ensureLoggedIn if lab says it's public)
+router.get('/bargains', ensureLoggedIn, function (req, res, next) {
+  const sqlquery = 'SELECT * FROM books WHERE price < 15';
 
   db.query(sqlquery, (err, result) => {
     if (err) return next(err);
-    // pass as "bargains" to match bargains.ejs
-    res.render('bargains.ejs', { bargains: result });
+    res.render('bargains.ejs', { cheapBooks: result });
   });
 });
 
