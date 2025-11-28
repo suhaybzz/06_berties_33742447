@@ -11,23 +11,14 @@
       <div class="error-box">
         <h2>There were problems with your submission:</h2>
         <ul>
-          <% errors.forEach(function (err) { %>
-            <li><%= err.msg %></li>
-          <% }); %>
+          <% errors.forEach(function(msg) { %>
+            <li><%= msg %></li>
+          <% }) %>
         </ul>
       </div>
     <% } %>
 
     <form method="POST" action="/users/registered">
-      <p>
-        Username:
-        <input
-          type="text"
-          name="username"
-          value="<%= (data && data.username) || '' %>"
-        />
-      </p>
-
       <p>
         First name:
         <input
@@ -36,7 +27,6 @@
           value="<%= (data && data.first) || '' %>"
         />
       </p>
-
       <p>
         Last name:
         <input
@@ -45,21 +35,28 @@
           value="<%= (data && data.last) || '' %>"
         />
       </p>
-
       <p>
         Email:
         <input
           type="email"
           name="email"
           value="<%= (data && data.email) || '' %>"
+          required
         />
       </p>
-
+      <p>
+        Username:
+        <input
+          type="text"
+          name="username"
+          value="<%= (data && data.username) || '' %>"
+          required
+        />
+      </p>
       <p>
         Password:
-        <input type="password" name="password" />
+        <input type="password" name="password" required />
       </p>
-
       <p>
         <input type="submit" value="Register" />
       </p>

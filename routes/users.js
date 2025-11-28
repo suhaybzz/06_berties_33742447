@@ -2,200 +2,223 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
-const { body, validationResult } = require('express-validator');
 
-// ------------------------
+// -------------------------
+// Helper: basic validation
+// -------------------------
+function validateRegistration(body) {
+  const errors = [];
+  const { username, first, last, email, password } = body;
+
+  if (!username || username.trim() === '') {
+    errors.push('Username is required');
+  }
+  if (!email || email.trim() === '') {
+    errors.push('Email is required');
+  }
+  if (!password || password.length < 6) {
+    errors.push('Password must be at least 6 characters long');
+  }
+  // first/last are optional in this simple version
+
+  return errors;
+}
+
+// -------------------------
 // GET registration form
-// ------------------------
-router.get('/register', function (req, res, next) {
+// -------------------------
+router.get('/register', (req, res) => {
   res.render('register.ejs', {
     errors: [],
-    data: {}
+    data: {}, // used to pre-fill fields
   });
 });
 
-// ------------------------
+// -------------------------
 // POST registration
-// ------------------------
-router.post(
-  '/registered',
-  [
-    body('username')
-      .trim()
-      .isLength({ min: 3 })
-      .withMessage('Username must be at least 3 characters long')
-      .escape(),
-    body('first')
-      .trim()
-      .notEmpty()
-      .withMessage('First name is required')
-      .escape(),
-    body('last')
-      .trim()
-      .notEmpty()
-      .withMessage('Last name is required')
-      .escape(),
-    body('email')
-      .trim()
-      .isEmail()
-      .withMessage('A valid email address is required')
-      .normalizeEmail(),
-    body('password')
-      .isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters long')
-  ],
-  function (req, res, next) {
-    const errors = validationResult(req);
+// -------------------------
+router.post('/registered', (req, res, next) => {
+  const { username, first, last, email, password } = req.body;
+  const errors = validateRegistration(req.body);
+  const data = { username, first, last, email };
 
-    if (!errors.isEmpty()) {
-      // Re-display form with validation errors and the user’s input
-      return res.status(400).render('register.ejs', {
-        errors: errors.array(),
-        data: req.body
-      });
+  if (errors.length > 0) {
+    // validation failed – re-show form with errors + previously entered data
+    return res.status(400).render('register.ejs', { errors, data });
+  }
+
+  // Check if username already exists
+  const checkSql = 'SELECT id FROM users WHERE username = ?';
+  db.query(checkSql, [username], (err, rows) => {
+    if (err) return next(err);
+
+    if (rows.length > 0) {
+      return res
+        .status(400)
+        .render('register.ejs', {
+          errors: ['That username is already taken'],
+          data,
+        });
     }
 
-    const { username, first, last, email, password } = req.body;
+    // Hash password and insert user
+    bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
+      if (err) return next(err);
 
-    // Hash password
-    bcrypt.hash(password, saltRounds, function (err, hashedPassword) {
-      if (err) {
-        return next(err);
-      }
-
-      const sqlquery =
-        'INSERT INTO users (username, first, last, email, hashedPassword) VALUES (?,?,?,?,?)';
+      const insertUserSql =
+        'INSERT INTO users (username, first, last, email, hashedPassword) VALUES (?, ?, ?, ?, ?)';
       const newrecord = [username, first, last, email, hashedPassword];
 
-      db.query(sqlquery, newrecord, (err, result) => {
-        if (err) {
-          return next(err);
-        }
+      db.query(insertUserSql, newrecord, (err2) => {
+        if (err2) return next(err2);
 
-        const output =
-          'Hello ' +
-          first +
-          ' ' +
-          last +
-          ' you are now registered! We will send an email to you at ' +
-          email;
-
-        res.send(output);
+        // Optional: log registration in audit table
+        const auditSql =
+          'INSERT INTO audit (email, username, action, success, details) VALUES (?, ?, ?, ?, ?)';
+        db.query(
+          auditSql,
+          [email, username, 'register', true, 'User registered'],
+          () => {
+            // ignore audit errors
+            res.send(
+              `Hello ${first || ''} ${last || ''}, you are now registered! We will send an email to you at ${email}.`
+            );
+          }
+        );
       });
     });
-  }
-);
+  });
+});
 
-// ------------------------
+// -------------------------
 // LIST USERS (no passwords)
-// ------------------------
-router.get('/list', function (req, res, next) {
+// -------------------------
+router.get('/list', (req, res, next) => {
   const sqlquery = 'SELECT username, first, last, email FROM users';
 
   db.query(sqlquery, (err, result) => {
-    if (err) {
-      return next(err);
-    }
+    if (err) return next(err);
     res.render('userlist.ejs', { users: result });
   });
 });
 
-// ------------------------
+// -------------------------
 // LOGIN FORM
-// ------------------------
-router.get('/login', function (req, res, next) {
-  res.render('login.ejs', { errors: [], data: {} });
-});
-
-// ------------------------
-// HANDLE LOGIN + AUDIT
-// ------------------------
-router.post('/loggedin', function (req, res, next) {
-  const { username, password } = req.body;
-
-  const sqlquery =
-    'SELECT username, hashedPassword FROM users WHERE username = ?';
-  db.query(sqlquery, [username], (err, result) => {
-    if (err) {
-      return next(err);
-    }
-
-    if (result.length === 0) {
-      // user not found → log failed attempt
-      const auditSql =
-        'INSERT INTO audit (username, success, details) VALUES (?, ?, ?)';
-      db.query(
-        auditSql,
-        [username, false, 'Login failed: user not found'],
-        (auditErr) => {
-          if (auditErr) return next(auditErr);
-          res.render('login.ejs', {
-            errors: [{ msg: 'Login failed: user not found' }],
-            data: { username }
-          });
-        }
-      );
-    } else {
-      const hashedPassword = result[0].hashedPassword;
-
-      bcrypt.compare(password, hashedPassword, function (err, match) {
-        if (err) {
-          return next(err);
-        }
-
-        if (match) {
-          // Save user in session so index.ejs sees currentUser
-          req.session.currentUser = { username };
-
-          const auditSql =
-            'INSERT INTO audit (username, success, details) VALUES (?, ?, ?)';
-          db.query(
-            auditSql,
-            [username, true, 'Login successful'],
-            (auditErr) => {
-              if (auditErr) return next(auditErr);
-              res.redirect('/');
-            }
-          );
-        } else {
-          const auditSql =
-            'INSERT INTO audit (username, success, details) VALUES (?, ?, ?)';
-          db.query(
-            auditSql,
-            [username, false, 'Login failed: wrong password'],
-            (auditErr) => {
-              if (auditErr) return next(auditErr);
-              res.render('login.ejs', {
-                errors: [{ msg: 'Login failed: incorrect password' }],
-                data: { username }
-              });
-            }
-          );
-        }
-      });
-    }
+// -------------------------
+router.get('/login', (req, res) => {
+  res.render('login.ejs', {
+    errors: [],
+    data: {},
   });
 });
 
-// ------------------------
-// LOGOUT
-// ------------------------
-router.get('/logout', function (req, res, next) {
-  req.session.currentUser = null;
-  res.redirect('/');
+// -------------------------
+// HANDLE LOGIN + AUDIT
+// -------------------------
+router.post('/loggedin', (req, res, next) => {
+  const { username, password } = req.body;
+  const data = { username };
+  const errors = [];
+
+  if (!username || username.trim() === '') {
+    errors.push('Username is required');
+  }
+  if (!password || password === '') {
+    errors.push('Password is required');
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).render('login.ejs', { errors, data });
+  }
+
+  const sqlquery =
+    'SELECT id, username, email, hashedPassword FROM users WHERE username = ?';
+  db.query(sqlquery, [username], (err, result) => {
+    if (err) return next(err);
+
+    if (result.length === 0) {
+      // user not found
+      const auditSql =
+        'INSERT INTO audit (email, username, action, success, details) VALUES (?, ?, ?, ?, ?)';
+      db.query(
+        auditSql,
+        [null, username, 'login', false, 'Login failed: user not found'],
+        () => {
+          res
+            .status(401)
+            .render('login.ejs', {
+              errors: ['Login failed: user not found'],
+              data,
+            });
+        }
+      );
+      return;
+    }
+
+    const user = result[0];
+    const hashedPassword = user.hashedPassword;
+
+    bcrypt.compare(password, hashedPassword, (err2, match) => {
+      if (err2) return next(err2);
+
+      if (!match) {
+        // wrong password
+        const auditSql =
+          'INSERT INTO audit (email, username, action, success, details) VALUES (?, ?, ?, ?, ?)';
+        db.query(
+          auditSql,
+          [user.email, username, 'login', false, 'Login failed: wrong password'],
+          () => {
+            res
+              .status(401)
+              .render('login.ejs', {
+                errors: ['Login failed: incorrect password'],
+                data,
+              });
+          }
+        );
+        return;
+      }
+
+      // SUCCESS – store user in session
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      };
+
+      const auditSql =
+        'INSERT INTO audit (email, username, action, success, details) VALUES (?, ?, ?, ?, ?)';
+      db.query(
+        auditSql,
+        [user.email, username, 'login', true, 'Login successful'],
+        () => {
+          // redirect back to home page
+          res.redirect('/');
+        }
+      );
+    });
+  });
 });
 
-// ------------------------
+// -------------------------
+// LOGOUT
+// -------------------------
+router.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/');
+  });
+});
+
+// -------------------------
 // AUDIT HISTORY PAGE
-// ------------------------
-router.get('/audit', function (req, res, next) {
+// -------------------------
+router.get('/audit', (req, res, next) => {
   const sqlquery =
-    'SELECT username, success, time, details FROM audit ORDER BY time DESC';
+    'SELECT email, username, action, success, time, details FROM audit ORDER BY time DESC';
 
   db.query(sqlquery, (err, result) => {
-    if (err) {
-      return next(err);
-    }
+    if (err) return next(err);
     res.render('audit.ejs', { auditRows: result });
   });
 });
