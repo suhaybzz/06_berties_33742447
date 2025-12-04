@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google Books Search</title>
+    <link rel="stylesheet" type="text/css" href="/main.css" />
+  </head>
+  <body>
+    <h1>Search using Google's Books API</h1>
+
+    <p>
+      <a href="/">Back to home</a>
+    </p>
+
+    <form id="gbooks-form">
+      <p>
+        <label for="keyword">Keyword:</label>
+        <input type="text" id="keyword" name="keyword" />
+        <button type="submit">Search</button>
+      </p>
+    </form>
+
+    <h2>Results from Google Books</h2>
+    <div id="google-results"></div>
+
+    <h2>Results from Bertie's own database</h2>
+    <div id="local-results"></div>
+
+    <script>
+      const form = document.getElementById('gbooks-form');
+      const googleResultsDiv = document.getElementById('google-results');
+      const localResultsDiv = document.getElementById('local-results');
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        const keyword = document.getElementById('keyword').value.trim();
+        if (!keyword) {
+          googleResultsDiv.innerHTML = '<p>Please enter a search term.</p>';
+          localResultsDiv.innerHTML = '';
+          return;
+        }
+
+        // -----------------------------
+        // 1) Google Books API call
+        // -----------------------------
+        const googleUrl =
+          'https://www.googleapis.com/books/v1/volumes?q=' +
+          encodeURIComponent(keyword);
+
+        try {
+          const gRes = await fetch(googleUrl);
+          const gData = await gRes.json();
+
+          if (!gData.items || gData.items.length === 0) {
+            googleResultsDiv.innerHTML = '<p>No results from Google.</p>';
+          } else {
+            let html = '<ul>';
+            gData.items.forEach((item) => {
+              const info = item.volumeInfo || {};
+              const title = info.title || 'No title';
+              const authors = info.authors ? info.authors.join(', ') : 'Unknown';
+              html += `<li><strong>${title}</strong> – ${authors}</li>`;
+            });
+            html += '</ul>';
+            googleResultsDiv.innerHTML = html;
+          }
+        } catch (err) {
+          console.error(err);
+          googleResultsDiv.innerHTML =
+            '<p>There was a problem contacting Google Books.</p>';
+        }
+
+        // -----------------------------
+        // 2) Your own /books/api/search
+        // -----------------------------
+        try {
+          const localUrl =
+            '/books/api/search?keyword=' + encodeURIComponent(keyword);
+          const lRes = await fetch(localUrl);
+          const lData = await lRes.json();
+
+          if (!lData || lData.length === 0) {
+            localResultsDiv.innerHTML = '<p>No local matches.</p>';
+          } else {
+            let html = '<ul>';
+            lData.forEach((book) => {
+              html += `<li><strong>${book.name}</strong> – £${book.price}</li>`;
+            });
+            html += '</ul>';
+            localResultsDiv.innerHTML = html;
+          }
+        } catch (err) {
+          console.error(err);
+          localResultsDiv.innerHTML =
+            '<p>There was a problem contacting the local API.</p>';
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Search using Google Books – <%= shopData.shopName %></title>
+    <link rel="stylesheet" type="text/css" href="/main.css" />
+  </head>
+  <body>
+    <h1>Search using Google Books</h1>
+
+    <form method="POST" action="/books/searchapi">
+      <p>
+        <label for="query">Book title or keywords:</label>
+        <input type="text" id="query" name="query" required />
+      </p>
+      <p>
+        <input type="submit" value="Search" />
+      </p>
+    </form>
+
+    <p><a href="/">Back to home</a></p>
+  </body>
+</html>

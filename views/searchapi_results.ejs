@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Results for "<%= query %>" – <%= shopData.shopName %></title>
+    <link rel="stylesheet" type="text/css" href="/main.css" />
+  </head>
+  <body>
+    <h1>Results for "<%= query %>"</h1>
+
+    <% if (!books || books.length === 0) { %>
+      <p>No results found.</p>
+    <% } else { %>
+      <ul>
+        <% books.forEach(function (book) { %>
+          <li style="margin-bottom: 1em;">
+            <strong><%= book.title %></strong>
+            <% if (book.authors) { %>
+              <br />By <%= book.authors %>
+            <% } %>
+
+            <% if (book.price !== null) { %>
+              <br />Price from Google: £<%= book.price.toFixed(2) %>
+            <% } else { %>
+              <br />No price information available
+            <% } %>
+
+            <form method="POST" action="/books/addfromapi" style="margin-top: 0.5em;">
+              <input type="hidden" name="title" value="<%= book.title %>" />
+              <input type="hidden" name="price" value="<%= book.price || '' %>" />
+              <button type="submit">Add to Bertie’s Books</button>
+            </form>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+
+    <p><a href="/books/searchapi">Search again</a></p>
+    <p><a href="/">Back to home</a></p>
+  </body>
+</html>
